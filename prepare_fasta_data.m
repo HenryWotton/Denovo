@@ -43,7 +43,7 @@ TrainSet{end+1,1}=[59,61]; % GROUP 6:HCV-subtype (2,38)
 TrainSet{end+1,1}=58; % GROUP 6:HCV-subtype (3)
 TrainSet{end+1,1}=[60,63,107,143,158,159]; % GROUP 6:HCV-subtype(1,2,1,28,4,6)
 TrainSet{end+1,1}=[26,100]; % GROUP 7: Adeno(18,46)_
-TrainSet{end+1,1}=[27,116]; % GROUP 7: Adeno (1,4)
+TrainSet{end+1,1}=[27,116]; % GROUP 7: Adeno (1,4) % removed 27 in 2021 new
 TrainSet{end+1,1}=[131]; % GROUP 7: Adeno (1)
 TrainSet{end+1,1}=[28 ]; % GROUP 7: Adeno(1)
 TrainSet{end+1,1}=[29,99]; % GROUP 7: Adeno (1,16)
@@ -60,15 +60,15 @@ TrainSet{end+1,1}=[42];% GROUP 10: Pabilloma-Kabba  (3)
 TrainSet{end+1,1}=[34];% GROUP 10: Pabilloma-Beta  (8)
 TrainSet{end+1,1}=[36];% GROUP 10: Pabilloma-Mu  (7)
 %Group 11: Herpses Beta
-TrainSet{end+1,1}=[18];% (2)
+% TrainSet{end+1,1}=[18];% (2) removed 2021 New 
 TrainSet{end+1,1}=[19];%(1)
 TrainSet{end+1,1}=[14,15,16];%(62,2,19)
 % GROUP 12: Herpes Gamma
 TrainSet{end+1,1}=[21,124,20];%(103.13,297)
 TrainSet{end+1,1}=[115,160,170];%(20,115,10)
 % GROUP 13: Herpes Alpha 
-TrainSet{end+1,1}=[5,6,7,8,9];% (120,225,1,1,)
-TrainSet{end+1,1}=[10,11];%(2,7)
+TrainSet{end+1,1}=[5,6,7,8,9];% (120,225,1,1,) % human Herpesvirus 1
+TrainSet{end+1,1}=[10,11];%(2,7) % Human Herpesvirus 2
 % GROUP 14': HIV 1 
 TrainSet{end+1,1}=[149,86,84,82,80,77]; %(3,2,80,1,4,39)
 TrainSet{end+1,1}=[79,83,85,142] ;% (5,4,96,4)
@@ -78,26 +78,70 @@ TrainSet{end+1,1}=[81];% (3)
 TrainSet{end+1,1}=[78];% (14)
 TrainSet{end+1,1}=[87]; % Group 15:HIV2 (8)
 TrainSet{end+1,1}=[88]; % Group 15:HIV2 (4)
+
+
+% but still need to check which taxon the true members really belong
+true_taxon_B=[];
+for i=1:length(true_member)
+    m = strsplit(true_member{i},"|");
+    m = m{2};
+    check = data.TaxonB(strcmp(m,data.ProteinB));
+    if sum(check)>0
+        true_taxon_B(end+1) = check(1);
+    end
+end
+
+true_taxon_B = unique(true_taxon_B);
+
+
+% Below check how many taxonomies are present in trainset but not in true_taxon B
+taxon_to_delete_from_trainset=[];
+for i=1:length(TrainSet)
+    check = TrainSet{i};
+    for j=1:length(check)
+        tx=check(j);
+        if ~ismember(tx,true_taxon_B)
+            taxon_to_delete_from_trainset(end+1)=tx;
+        end
+    end
+end
+% There are only 2 taxonomies ID to be deleted from TrainSet
+% 10519       10368. No. 27 and 18 in VirusID_Maper,GROUP 7: Adeno (1,4)
+% and (2)
+
+% THen update the codes that construct trainset 
 load Mentha_All_Vs.mat VirusID_Maper
     for t1=1:length(TrainSet)
         Crnt=TrainSet{t1,1};
         for c=1:length(Crnt)
-            Crnt(c)=VirusID_Maper(Crnt(c));
+            to_validate=VirusID_Maper(Crnt(c));
+            if ~ismember(to_validate,taxon_to_delete_from_trainset)
+                Crnt(c)=VirusID_Maper(Crnt(c));
+            end
         end
         TrainSet{t1,1}=Crnt;
     end
-% Now check which new IDs are not mapped 
-outlier_taxon=[];
-for i=1:length(TaxonB_new)
-    tb = TaxonB_new(i);
+
+    % Now check which new IDs are not mapped 
+outlier_taxon_B=[];
+for i=1:length(true_taxon_B)
+    tb = true_taxon_B(i);
     check = cellfun(@(x) ismember(tb,x),TrainSet);
     if sum(check)==0
-        outlier_taxon(end+1)=tb;
+        outlier_taxon_B(end+1)=tb;
     end
 end
-% but still need to check which taxon the true members really belong
-% UNFINISHED
-        
+% There are 105 virus taxonomies that are not in trainset 
+TrainSet{1,1}(end+1) = 10324; % Belonging to group 1 
+TrainSet{end+1,1} = [10345]; % alphaherpesvirus/Varicellovirus. No existing group
+TrainSet{end+1,1} = [10366]; % Murid herpesvirus 1. No existing group 
+TrainSet{end+1,1} = [10383,10384]; % Rhadinovirus/ Saimiriine Herpesviurs 2
+TrainSet{end+1,1} = [10407];% Orthohepadnavirus 
+TrainSet{end+1,1} = [10497];% Asfvirus 
+TrainSet{end+1,1}=[10530]; % Murine mastadenovirus A
+TrainSet{end+1,1}=[10553]; % Fowl aviadenovirus A
+TrainSet{end+1,1} =[10559]; % Bovine papillomavirus type 1  
+
 [Human_hdrs,Human_seqs] = fastaread('all_human_interacting.fasta');
 true_human_hdr = {};
 true_SeqH={};
